@@ -173,6 +173,15 @@
     return '';
   }
 
+  // 把「正确答案」换算成选项字母（判断题的 对/错 → A/B），供界面高亮用
+  function answerLetters(q) {
+    if (q.type === 'judge') {
+      var n = judgeNorm(q.answer);
+      return n === '对' ? 'A' : (n === '错' ? 'B' : '');
+    }
+    return letters(q.answer);
+  }
+
   /* ================= 统计 ================= */
   function paperStats(key) {
     var cat = S.data.catalog[key] || {};
@@ -848,7 +857,9 @@
     h += '<div class="stem md">' + mdToHtml(q.stem) + '</div>';
 
     if (opts.length) {
-      var mine = letters(ua), right = letters(q.answer);
+      // 🔴 判断题的答案存的是「对 / 错」，不是选项字母 —— 必须换成 A/B，
+      //    否则答完题「正确选项」不会标绿（踩过：判定是对的，但界面没高亮）
+      var mine = letters(ua), right = answerLetters(q);
       h += '<div class="opts">';
       for (var i = 0; i < opts.length; i++) {
         var o = opts[i], cls = 'opt' + (q.type === 'multi' ? ' multi' : '');
@@ -879,8 +890,13 @@
     if (revealed) {
       var ok = isCorrect(q);
       if (opts.length) {
-        h += '<div class="verdict ' + (ok ? 'ok' : 'no') + '"><span class="icon">' + (ok ? '✅' : '❌') + '</span>' +
-          (ok ? '答对了，正确答案为 ' + esc(q.answer) : '答错了，正确答案为 ' + esc(q.answer)) + '</div>';
+        if (ok === null) {
+          // 🔴 只是按了「查看答案」、还没作答 —— 这时候说人家「答错了」是误导（踩过）
+          h += '<div class="verdict" style="color:#8695a4"><span class="icon">👁</span>已查看答案（本题还没作答）</div>';
+        } else {
+          h += '<div class="verdict ' + (ok ? 'ok' : 'no') + '"><span class="icon">' + (ok ? '✅' : '❌') + '</span>' +
+            (ok ? '答对了，正确答案为 ' + esc(q.answer) : '答错了，正确答案为 ' + esc(q.answer)) + '</div>';
+        }
       } else if (ok !== null) {
         h += '<div class="verdict ' + (ok ? 'ok' : 'no') + '"><span class="icon">' + (ok ? '✅' : '❌') + '</span>' +
           (ok ? '已标记为答对' : '已标记为答错，已进错题本') + '</div>';
